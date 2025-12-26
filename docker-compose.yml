@@ -1,0 +1,95 @@
+version: '3.8'
+services:
+  dnsmasq:
+    image: andyshinn/dnsmasq:latest
+    container_name: emo-dns
+    network_mode: "host"
+    cap_add:
+      - NET_ADMIN
+    volumes:
+      - ./dnsmasq.conf:/etc/dnsmasq.conf
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    network_mode: "host"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+      - ./nginx/ssl:/etc/nginx/ssl
+    restart: unless-stopped
+
+  # mitmproxy:
+  #   image: mitmproxy/mitmproxy
+  #   container_name: mitm-web
+  #   network_mode: "host"
+  #   volumes:
+  #     - ./mitmproxy-certs:/home/mitmproxy/.mitmproxy
+  #   # Change: using 'mitmweb' and binding the UI to all interfaces (0.0.0.0)
+  #   command: >
+  #     mitmweb --mode transparent
+  #     --listen-host 0.0.0.0
+  #     --listen-port 443 
+  #     --web-host 0.0.0.0 
+  #     --web-port 8081 
+  #     --set block_global=false 
+  #     --set web_password=emo
+  #     --ssl-insecure
+  #   restart: unless-stopped
+  
+# The decoder/SSL handler
+  # mitmproxy:
+  #   image: mitmproxy/mitmproxy
+  #   network_mode: "host"
+  #   command: >
+  #     mitmdump --mode reverse:http://127.0.0.1:8080 
+  #     --listen-port 443 
+  #     --set ssl_insecure=true
+  #   restart: unless-stopped
+
+    # Replace mitmproxy with the custom EMO Proxy
+  # emo-proxy:
+  #   image: golang:1.21-alpine
+  #   container_name: emo-proxy
+  #   network_mode: "host"
+  #   privileged: true  # Necessary for low-level network access
+  #   user: "0:0"       # Force root user to allow port 443 binding
+  #   cap_add:
+  #     - NET_ADMIN
+  #     - NET_BIND_SERVICE
+  #   volumes:
+  #     - ../Documents/emo/Proxy:/app
+  #   working_dir: /app
+  #   command: go run emoProxy.go
+  #   restart: unless-stopped
+
+  # mitmproxy:
+  #   image: mitmproxy/mitmproxy
+  #   container_name: mitm-web
+  #   network_mode: "host"
+  #   privileged: true  # Necessary for low-level network access
+  #   user: "root"  # <--- Add this linuser: "0:0"       # Force root user to allow port 443 binding
+  #   environment:
+  #     - PYTHONUNBUFFERED=1
+  #   cap_add:
+  #     - NET_ADMIN
+  #     - NET_BIND_SERVICE
+  #   # We use --tcp-hosts to allow the SSL handshake to pass through untouched
+  #   command: >
+  #     mitmweb --mode transparent 
+  #     --tcp-hosts '.*living\.ai'
+  #     --listen-port 443 
+  #     --web-host 0.0.0.0 
+  #     --web-port 8081 
+  #     --set block_global=false 
+  #     --set web_password=emo
+  #   restart: unless-stopped
+
+  emo-proxy:
+    image: golang:1.21-alpine
+    network_mode: "host"
+    volumes:
+      - ../Documents/emo/Proxy:/app
+    working_dir: /app
+    # The proxy now listens on 8080 as plain HTTP
+    command: go run emoProxy.go
+    restart: unless-stopped
